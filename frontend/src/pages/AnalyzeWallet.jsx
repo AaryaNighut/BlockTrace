@@ -232,12 +232,80 @@ export default function AnalyzeWallet({ initialWalletAddress = '', onRegisterSuc
   const handleGenerateRandomAddress = () => {
     try {
       const randomWallet = ethers.Wallet.createRandom();
-      setAddressInput(randomWallet.address);
-      handleAnalyze(randomWallet.address);
+      const addr = randomWallet.address;
+      setAddressInput(addr);
+      setErrorMsg('');
+      setRegSuccess(null);
+      setRegError('');
+
+      if (analysisMode === 'live') {
+        handleAnalyze(addr, 'live');
+      } else {
+        // Generate dynamic mock risk data for Demo Mode
+        const riskProfiles = [
+          {
+            label: 'Random High Risk Wallet',
+            totalTx: Math.floor(28 + Math.random() * 45),
+            totalReceived: `${(45.5 + Math.random() * 120).toFixed(2)} ETH`,
+            totalSent: `${(40.2 + Math.random() * 110).toFixed(2)} ETH`,
+            uniqueAddresses: Math.floor(12 + Math.random() * 15),
+            largestTx: `${(12.5 + Math.random() * 30).toFixed(2)} ETH`,
+            largeTxCount: Math.floor(2 + Math.random() * 4),
+            isRapidSequence: true,
+            hasUnusualPattern: Math.random() > 0.4,
+          },
+          {
+            label: 'Random Medium Risk Wallet',
+            totalTx: Math.floor(14 + Math.random() * 10),
+            totalReceived: `${(18.2 + Math.random() * 20).toFixed(2)} ETH`,
+            totalSent: `${(14.0 + Math.random() * 15).toFixed(2)} ETH`,
+            uniqueAddresses: Math.floor(6 + Math.random() * 5),
+            largestTx: `${(4.5 + Math.random() * 5).toFixed(2)} ETH`,
+            largeTxCount: 0,
+            isRapidSequence: Math.random() > 0.5,
+            hasUnusualPattern: false,
+          },
+          {
+            label: 'Random Low Risk Wallet',
+            totalTx: Math.floor(3 + Math.random() * 6),
+            totalReceived: `${(1.2 + Math.random() * 4).toFixed(2)} ETH`,
+            totalSent: `${(0.8 + Math.random() * 2).toFixed(2)} ETH`,
+            uniqueAddresses: Math.floor(2 + Math.random() * 2),
+            largestTx: `${(0.5 + Math.random() * 1.5).toFixed(2)} ETH`,
+            largeTxCount: 0,
+            isRapidSequence: false,
+            hasUnusualPattern: false,
+          }
+        ];
+
+        // Randomly select one of the profiles
+        const chosen = riskProfiles[Math.floor(Math.random() * riskProfiles.length)];
+
+        const walletData = {
+          address: addr,
+          label: chosen.label,
+          description: 'Dynamic randomized risk evaluation',
+          ...chosen,
+          firstSeen: '2026-06-10',
+          lastSeen: '2026-09-30',
+          recentActivity: [
+            { hash: '0x' + Array.from({ length: 8 }, () => Math.floor(Math.random() * 16).toString(16)).join('') + '...', type: 'OUT', amount: chosen.largestTx, counterparty: '0x9910...ab12', time: '15 mins ago', status: 'Confirmed' },
+            { hash: '0x' + Array.from({ length: 8 }, () => Math.floor(Math.random() * 16).toString(16)).join('') + '...', type: 'IN',  amount: '4.5 ETH', counterparty: '0x1f98...918b', time: '2 hours ago', status: 'Confirmed' },
+          ]
+        };
+
+        const riskAssessment = calculateRiskScore(walletData);
+
+        setAnalysisResult({
+          ...walletData,
+          mode: 'demo',
+          networkName: 'Educational Demo Network',
+          dataSourceName: 'Dynamic Randomized Demo Dataset',
+          risk: riskAssessment
+        });
+      }
     } catch (err) {
-      const hex = '0x' + Array.from({ length: 40 }, () => Math.floor(Math.random() * 16).toString(16)).join('');
-      setAddressInput(hex);
-      handleAnalyze(hex);
+      console.error('Random generation error:', err);
     }
   };
 
