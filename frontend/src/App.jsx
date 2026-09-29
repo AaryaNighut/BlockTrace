@@ -105,6 +105,31 @@ export default function App() {
     setInvestigations((prev) => [newRecord, ...prev]);
   };
 
+  const handleAddSampleInvestigation = () => {
+    const sampleAddrs = [
+      '0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045',
+      '0x28C6c06298d514Db089934071355E5743bf21d60',
+      '0xde0B295669a9FD93d5F28D9Ec85E40f4cb697BAe'
+    ];
+    const randomAddr = sampleAddrs[Math.floor(Math.random() * sampleAddrs.length)];
+    const randomScore = Math.floor(25 + Math.random() * 60);
+    const riskLevel = randomScore >= 61 ? 'HIGH RISK' : randomScore >= 31 ? 'MEDIUM RISK' : 'LOW RISK';
+
+    const newRecord = {
+      id: investigations.length + 1,
+      walletAddress: randomAddr,
+      riskScore: randomScore,
+      riskLevel: riskLevel,
+      primaryReason: 'Interactive sample audit record added during presentation',
+      timestamp: Date.now(),
+      investigator: walletAccount || '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266 (Signer)',
+      txHash: '0x' + Array.from({ length: 64 }, () => Math.floor(Math.random() * 16).toString(16)).join(''),
+      status: 'Confirmed On-Chain'
+    };
+
+    setInvestigations((prev) => [newRecord, ...prev]);
+  };
+
   return (
     <div className="flex min-h-screen bg-[#090d16] text-slate-100">
       {/* Sidebar Navigation */}
@@ -142,6 +167,8 @@ export default function App() {
             <History
               investigations={investigations}
               onRefresh={loadOnChainRecords}
+              onAddSample={handleAddSampleInvestigation}
+              onSelectWalletToAnalyze={handleSelectWalletToAnalyze}
             />
           )}
 

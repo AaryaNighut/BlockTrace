@@ -6,13 +6,20 @@ import {
   ExternalLink,
   ShieldAlert,
   Filter,
-  CheckCircle2
+  CheckCircle2,
+  PlusCircle,
+  ArrowRight
 } from 'lucide-react';
 import RiskBadge from '../components/RiskBadge';
 import Modal from '../components/Modal';
 import { formatAddress, formatTimestamp } from '../utils/web3';
 
-export default function History({ investigations = [], onRefresh }) {
+export default function History({ 
+  investigations = [], 
+  onRefresh, 
+  onAddSample, 
+  onSelectWalletToAnalyze 
+}) {
   const [searchTerm, setSearchTerm] = useState('');
   const [riskFilter, setRiskFilter] = useState('ALL');
   const [selectedInv, setSelectedInv] = useState(null);
@@ -26,9 +33,16 @@ export default function History({ investigations = [], onRefresh }) {
     setTimeout(() => setIsRefreshing(false), 500);
   };
 
-  const filteredInvestigations = investigations.filter((inv) => {
-    const matchesSearch = (inv.walletAddress || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-                          String(inv.id).includes(searchTerm);
+  const filteredInvestigations = investigations.filter((inv, index) => {
+    const searchLower = searchTerm.toLowerCase();
+    const formattedId = `INV-${String(inv.id || index + 1).padStart(3, '0')}`.toLowerCase();
+    
+    const matchesSearch = 
+      (inv.walletAddress || '').toLowerCase().includes(searchLower) ||
+      (inv.primaryReason || '').toLowerCase().includes(searchLower) ||
+      (inv.investigator || '').toLowerCase().includes(searchLower) ||
+      (inv.txHash || '').toLowerCase().includes(searchLower) ||
+      formattedId.includes(searchLower);
     
     if (riskFilter === 'ALL') return matchesSearch;
     return matchesSearch && (inv.riskLevel || '').toUpperCase().includes(riskFilter);
@@ -44,18 +58,30 @@ export default function History({ investigations = [], onRefresh }) {
             On-Chain Investigation History
           </h2>
           <p className="text-xs text-slate-400 mt-1">
-            Immutable investigation audit records retrieved directly from the <code className="text-cyan-300 font-mono">InvestigationRegistry.sol</code> smart contract.
+            Immutable investigation audit records registered on-chain in <code className="text-cyan-300 font-mono">InvestigationRegistry.sol</code>.
           </p>
         </div>
 
-        <button
-          onClick={handleRefresh}
-          disabled={isRefreshing}
-          className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold transition shrink-0 self-start md:self-auto"
-        >
-          <RefreshCw className={`w-3.5 h-3.5 text-cyan-400 ${isRefreshing ? 'animate-spin' : ''}`} />
-          <span>Sync On-Chain Records</span>
-        </button>
+        <div className="flex flex-wrap items-center gap-3 shrink-0">
+          {onAddSample && (
+            <button
+              onClick={onAddSample}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs shadow-md transition"
+            >
+              <PlusCircle className="w-3.5 h-3.5" />
+              <span>Add Sample Record</span>
+            </button>
+          )}
+
+          <button
+            onClick={handleRefresh}
+            disabled={isRefreshing}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold transition"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 text-cyan-400 ${isRefreshing ? 'animate-spin' : ''}`} />
+            <span>Sync On-Chain Records</span>
+          </button>
+        </div>
       </div>
 
       {/* Filter & Search Toolbar */}
@@ -67,7 +93,7 @@ export default function History({ investigations = [], onRefresh }) {
             type="text"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Filter by wallet or ID..."
+            placeholder="Search by wallet, ID, or reason..."
             className="w-full bg-slate-900 border border-slate-800 focus:border-cyan-500/50 rounded-xl pl-10 pr-4 py-2 text-xs font-mono text-slate-100 placeholder-slate-500 focus:outline-none transition"
           />
         </div>
@@ -101,49 +127,55 @@ export default function History({ investigations = [], onRefresh }) {
                 <th className="px-6 py-3.5">Risk Score</th>
                 <th className="px-6 py-3.5">Risk Level</th>
                 <th className="px-6 py-3.5">Primary Reason</th>
-                <th className="px-6 py-3.5">Timestamp</th>
+                <th className="px-6 py-3.5">Date</th>
                 <th className="px-6 py-3.5">Status</th>
                 <th className="px-6 py-3.5 text-right">Action</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-800/60 text-slate-300">
               {filteredInvestigations.length > 0 ? (
-                filteredInvestigations.map((inv) => (
-                  <tr key={inv.id} className="hover:bg-slate-800/40 transition">
-                    <td className="px-6 py-4 font-mono font-bold text-cyan-400">
-                      INV-{String(inv.id).padStart(3, '0')}
-                    </td>
-                    <td className="px-6 py-4 font-mono font-medium text-slate-200">
-                      {inv.walletAddress}
-                    </td>
-                    <td className="px-6 py-4 font-mono font-bold text-slate-100">
-                      {inv.riskScore} <span className="text-[10px] text-slate-500">/100</span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <RiskBadge riskLevel={inv.riskLevel} />
-                    </td>
-                    <td className="px-6 py-4 text-slate-400 max-w-xs truncate">
-                      {inv.primaryReason || 'Standard pattern evaluation'}
-                    </td>
-                    <td className="px-6 py-4 text-slate-400 font-mono">
-                      {formatTimestamp(inv.timestamp)}
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className="inline-flex items-center gap-1 text-emerald-400 font-semibold text-[11px]">
-                        <CheckCircle2 className="w-3 h-3" />
-                        Confirmed
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 text-right">
-                      <button
-                        onClick={() => setSelectedInv(inv)}
-                        className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-cyan-400 font-medium transition"
-                      >
-                        View Details
-                      </button>
-                    </td>
-                  </tr>
-                ))
+                filteredInvestigations.map((inv, index) => {
+                  const displayId = typeof inv.id === 'number' && inv.id < 1000 
+                    ? `INV-${String(inv.id).padStart(3, '0')}` 
+                    : `INV-${String(index + 1).padStart(3, '0')}`;
+
+                  return (
+                    <tr key={index} className="hover:bg-slate-800/40 transition">
+                      <td className="px-6 py-4 font-mono font-bold text-cyan-400">
+                        {displayId}
+                      </td>
+                      <td className="px-6 py-4 font-mono font-medium text-slate-200">
+                        {formatAddress(inv.walletAddress)}
+                      </td>
+                      <td className="px-6 py-4 font-mono font-bold text-slate-100">
+                        {inv.riskScore} <span className="text-[10px] text-slate-500">/100</span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <RiskBadge riskLevel={inv.riskLevel} />
+                      </td>
+                      <td className="px-6 py-4 text-slate-400 max-w-xs truncate">
+                        {inv.primaryReason || 'Standard pattern evaluation'}
+                      </td>
+                      <td className="px-6 py-4 text-slate-400 font-mono">
+                        {formatTimestamp(inv.timestamp)}
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className="inline-flex items-center gap-1 text-emerald-400 font-semibold text-[11px]">
+                          <CheckCircle2 className="w-3.5 h-3.5" />
+                          Confirmed
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-right">
+                        <button
+                          onClick={() => setSelectedInv({ ...inv, displayId })}
+                          className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-cyan-400 font-medium transition"
+                        >
+                          View Details
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })
               ) : (
                 <tr>
                   <td colSpan="8" className="px-6 py-12 text-center text-slate-500 font-medium">
@@ -166,36 +198,58 @@ export default function History({ investigations = [], onRefresh }) {
           <div className="space-y-4 text-xs">
             <div className="flex items-center justify-between p-3.5 rounded-xl bg-slate-950 border border-slate-800">
               <span className="text-slate-400">Record ID:</span>
-              <span className="font-mono font-bold text-cyan-400 text-sm">INV-{String(selectedInv.id).padStart(3, '0')}</span>
+              <span className="font-mono font-bold text-cyan-400 text-sm">{selectedInv.displayId}</span>
             </div>
 
             <div className="space-y-2 font-mono">
               <div className="py-1.5 border-b border-slate-800">
-                <span className="text-slate-500 block text-[10px] uppercase">Target Wallet Address</span>
+                <span className="text-slate-500 block text-[10px] uppercase font-sans">Target Wallet Address</span>
                 <span className="text-slate-100 font-semibold text-xs break-all">{selectedInv.walletAddress}</span>
               </div>
               <div className="flex justify-between py-1.5 border-b border-slate-800">
-                <span className="text-slate-400">Risk Score:</span>
+                <span className="text-slate-400 font-sans">Risk Score:</span>
                 <span className="text-slate-100 font-bold">{selectedInv.riskScore} / 100</span>
               </div>
               <div className="flex justify-between py-1.5 border-b border-slate-800">
-                <span className="text-slate-400">Classification:</span>
+                <span className="text-slate-400 font-sans">Classification:</span>
                 <RiskBadge riskLevel={selectedInv.riskLevel} />
               </div>
               <div className="flex justify-between py-1.5 border-b border-slate-800">
-                <span className="text-slate-400">Timestamp:</span>
+                <span className="text-slate-400 font-sans">Timestamp:</span>
                 <span className="text-slate-300">{formatTimestamp(selectedInv.timestamp)}</span>
               </div>
               <div className="py-1.5 border-b border-slate-800">
-                <span className="text-slate-500 block text-[10px] uppercase">Investigator Address</span>
+                <span className="text-slate-500 block text-[10px] uppercase font-sans">Investigator Address</span>
                 <span className="text-slate-300 text-xs break-all">{selectedInv.investigator || '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266'}</span>
               </div>
+              {selectedInv.txHash && (
+                <div className="py-1.5 border-b border-slate-800">
+                  <span className="text-slate-500 block text-[10px] uppercase font-sans">On-Chain Tx Hash</span>
+                  <span className="text-cyan-400 text-xs break-all font-semibold">{selectedInv.txHash}</span>
+                </div>
+              )}
             </div>
 
             <div className="p-3.5 rounded-xl bg-slate-950 border border-slate-800 space-y-1">
               <span className="text-[11px] text-slate-400 font-semibold block">Primary Triggered Indicators:</span>
-              <p className="text-slate-300 leading-relaxed">{selectedInv.primaryReason}</p>
+              <p className="text-slate-300 leading-relaxed font-sans">{selectedInv.primaryReason}</p>
             </div>
+
+            {onSelectWalletToAnalyze && (
+              <div className="pt-2 flex justify-end">
+                <button
+                  onClick={() => {
+                    const addr = selectedInv.walletAddress;
+                    setSelectedInv(null);
+                    onSelectWalletToAnalyze(addr);
+                  }}
+                  className="px-4 py-2 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-slate-950 font-bold text-xs transition flex items-center gap-1.5"
+                >
+                  <span>Re-Analyze This Wallet</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            )}
           </div>
         )}
       </Modal>
