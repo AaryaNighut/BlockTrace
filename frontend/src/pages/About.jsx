@@ -7,7 +7,10 @@ import {
   Cpu, 
   Database, 
   BookOpen, 
-  CheckCircle2 
+  CheckCircle2,
+  Globe,
+  Sparkles,
+  Layers
 } from 'lucide-react';
 
 export default function About() {
@@ -23,7 +26,7 @@ export default function About() {
           About <span className="cyber-gradient-text">BlockTrace</span>
         </h2>
         <p className="text-slate-400 text-sm mt-2 leading-relaxed">
-          BlockTrace is an educational blockchain-based cryptocurrency transaction tracking and risk analysis DApp designed specifically as a Blockchain Technology mini-project.
+          BlockTrace is a full-stack educational blockchain application designed for cryptocurrency transaction tracking, rule-based risk evaluation, and on-chain investigation audit registration via Ethereum smart contracts.
         </p>
       </div>
 
@@ -40,28 +43,30 @@ export default function About() {
 
       {/* Grid of Details */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Project Objectives */}
+        {/* Project Objectives & Modes */}
         <div className="cyber-card p-6 rounded-2xl border border-slate-800 space-y-3">
           <h3 className="text-base font-bold text-slate-100 flex items-center gap-2">
             <ShieldCheck className="w-5 h-5 text-cyan-400" />
-            Core Objectives
+            Dual-Mode Capability
           </h3>
-          <ul className="space-y-2 text-xs text-slate-300">
+          <ul className="space-y-2.5 text-xs text-slate-300">
             <li className="flex items-start gap-2">
-              <CheckCircle2 className="w-4 h-4 text-cyan-400 shrink-0 mt-0.5" />
-              <span>Provide an accessible user interface to inspect cryptocurrency address activity metrics.</span>
+              <Sparkles className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+              <span>
+                <strong>Educational Demo Mode:</strong> 100% offline-compatible for college presentations without requiring external API keys.
+              </span>
             </li>
             <li className="flex items-start gap-2">
-              <CheckCircle2 className="w-4 h-4 text-cyan-400 shrink-0 mt-0.5" />
-              <span>Apply transparent, rule-based scoring (0-100) based on transaction frequency, counterparty volume, and transfer magnitude.</span>
+              <Globe className="w-4 h-4 text-cyan-400 shrink-0 mt-0.5" />
+              <span>
+                <strong>Live Ethereum Mainnet Mode:</strong> Queries live transaction history for any public address via Etherscan API V2 and parses Wei into ETH.
+              </span>
             </li>
             <li className="flex items-start gap-2">
-              <CheckCircle2 className="w-4 h-4 text-cyan-400 shrink-0 mt-0.5" />
-              <span>Enable immutable on-chain investigation record registration via Ethereum smart contracts.</span>
-            </li>
-            <li className="flex items-start gap-2">
-              <CheckCircle2 className="w-4 h-4 text-cyan-400 shrink-0 mt-0.5" />
-              <span>Offer an offline-compatible Demo Mode for seamless academic viva examination.</span>
+              <Layers className="w-4 h-4 text-purple-400 shrink-0 mt-0.5" />
+              <span>
+                <strong>On-Chain Audit Trail:</strong> Writes investigation metadata to <code className="text-cyan-300 font-mono">InvestigationRegistry.sol</code> on your local Hardhat node.
+              </span>
             </li>
           </ul>
         </div>
@@ -75,7 +80,7 @@ export default function About() {
           <div className="space-y-2 text-xs font-mono">
             <div className="p-2.5 rounded-xl bg-slate-950 border border-slate-800 flex justify-between">
               <span className="text-slate-400">Frontend Framework:</span>
-              <span className="text-cyan-300 font-semibold">React.js + Vite</span>
+              <span className="text-cyan-300 font-semibold">React.js (v18) + Vite</span>
             </div>
             <div className="p-2.5 rounded-xl bg-slate-950 border border-slate-800 flex justify-between">
               <span className="text-slate-400">Styling System:</span>
@@ -87,11 +92,11 @@ export default function About() {
             </div>
             <div className="p-2.5 rounded-xl bg-slate-950 border border-slate-800 flex justify-between">
               <span className="text-slate-400">Development Network:</span>
-              <span className="text-cyan-300 font-semibold">Hardhat Local Node</span>
+              <span className="text-cyan-300 font-semibold">Hardhat Node (31337)</span>
             </div>
             <div className="p-2.5 rounded-xl bg-slate-950 border border-slate-800 flex justify-between">
-              <span className="text-slate-400">Web3 Library:</span>
-              <span className="text-cyan-300 font-semibold">Ethers.js (v6) + MetaMask</span>
+              <span className="text-slate-400">Live Blockchain API:</span>
+              <span className="text-cyan-300 font-semibold">Etherscan API V2</span>
             </div>
           </div>
         </div>
@@ -107,21 +112,21 @@ export default function About() {
         <div className="space-y-3 text-xs">
           <div className="p-4 rounded-xl bg-slate-950/70 border border-slate-800 space-y-1">
             <span className="font-bold text-cyan-400 block">Q1: How is the Risk Score calculated?</span>
-            <p className="text-slate-300">
-              Answer: The score starts at 0 and evaluates 5 rule-based metrics (+20 points each): high tx count (&ge;25), multiple unique counterparty addresses (&ge;10), large transfer volume (&ge;10 ETH), rapid transfer sequences, and unusual fan-out patterns. Scores range 0-30 (Low), 31-60 (Medium), 61-100 (High).
+            <p className="text-slate-300 leading-relaxed">
+              Answer: The score starts at 0 and evaluates 5 rule-based metrics (+20 points each): total tx count (&ge;25), multiple unique counterparty addresses (&ge;10), large transfer volume (&ge;10 ETH), rapid transfer sequences (sub-minute), and unusual fan-out structures. Scores range 0-30 (Low), 31-60 (Medium), 61-100 (High).
             </p>
           </div>
 
           <div className="p-4 rounded-xl bg-slate-950/70 border border-slate-800 space-y-1">
             <span className="font-bold text-cyan-400 block">Q2: Why store investigation records on Ethereum?</span>
-            <p className="text-slate-300">
+            <p className="text-slate-300 leading-relaxed">
               Answer: Storing investigation metadata on an Ethereum smart contract ensures immutability, transparency, and auditability. Once written via <code className="text-cyan-300">registerInvestigation()</code>, the record cannot be tampered with or retroactively altered.
             </p>
           </div>
 
           <div className="p-4 rounded-xl bg-slate-950/70 border border-slate-800 space-y-1">
             <span className="font-bold text-cyan-400 block">Q3: How does the DApp interact with MetaMask?</span>
-            <p className="text-slate-300">
+            <p className="text-slate-300 leading-relaxed">
               Answer: Ethers.js uses <code className="text-cyan-300">window.ethereum</code> as a web3 provider. MetaMask prompts the user to sign the transaction, which is broadcast to our local Hardhat testnet (Chain ID 31337).
             </p>
           </div>
