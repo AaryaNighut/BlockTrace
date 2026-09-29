@@ -1,0 +1,16 @@
+{
+  "name": "blocktrace-blockchain",
+  "version": "1.0.0",
+  "description": "Smart contract layer for BlockTrace Blockchain Mini-Project",
+  "main": "index.js",
+  "scripts": {
+    "test": "hardhat test",
+    "compile": "hardhat compile",
+    "node": "hardhat node",
+    "deploy:local": "hardhat run scripts/deploy.js --network localhost"
+  },
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^4.0.0",
+    "hardhat": "^2.19.4"
+  }
+}
