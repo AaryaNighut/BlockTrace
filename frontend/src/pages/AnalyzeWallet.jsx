@@ -300,8 +300,8 @@ export default function AnalyzeWallet({ initialWalletAddress = '', onRegisterSuc
       setRegSuccess(null);
       setRegError('');
 
-      // Sequential rotation across High & Low risk tiers (0 = HIGH RISK, 1 = LOW RISK) - excludes Medium Risk
-      const currentStep = randomWalletStep % 2;
+      // Sequential rotation across 3 risk tiers: 0 = HIGH RISK, 1 = MEDIUM RISK, 2 = LOW RISK
+      const currentStep = randomWalletStep % 3;
       setRandomWalletStep((prev) => prev + 1);
 
       let chosen;
@@ -317,6 +317,19 @@ export default function AnalyzeWallet({ initialWalletAddress = '', onRegisterSuc
           largeTxCount: 3,
           isRapidSequence: true,
           hasUnusualPattern: true,
+        };
+      } else if (currentStep === 1) {
+        // Guaranteed MEDIUM RISK profile (Score 40 - 50)
+        chosen = {
+          label: 'Random Medium Risk Wallet',
+          totalTx: 28 + Math.floor(Math.random() * 5),
+          totalReceived: `${(22.0 + Math.random() * 15).toFixed(2)} ETH`,
+          totalSent: `${(18.0 + Math.random() * 10).toFixed(2)} ETH`,
+          uniqueAddresses: 12 + Math.floor(Math.random() * 4),
+          largestTx: `${(4.5 + Math.random() * 3).toFixed(2)} ETH`,
+          largeTxCount: 0,
+          isRapidSequence: false,
+          hasUnusualPattern: false,
         };
       } else {
         // Guaranteed LOW RISK profile (Score 0 - 15)
