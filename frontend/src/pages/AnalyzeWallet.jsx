@@ -47,19 +47,34 @@ export default function AnalyzeWallet({ initialWalletAddress = '', onRegisterSuc
   }, [initialWalletAddress]);
 
   const handleAnalyze = async (targetAddress, modeToUse = analysisMode) => {
-    const addr = (targetAddress || addressInput).trim();
+    let addr = (targetAddress || addressInput).trim();
     setErrorMsg('');
     setAnalysisResult(null);
     setRegSuccess(null);
     setRegError('');
 
     if (!addr) {
-      setErrorMsg('Invalid Ethereum wallet address.');
+      setErrorMsg('Please enter an Ethereum wallet address.');
       return;
     }
 
-    if (!ethers.isAddress(addr)) {
-      setErrorMsg('Invalid Ethereum wallet address.');
+    if (addr.startsWith('0X')) {
+      addr = '0x' + addr.substring(2);
+    }
+
+    let validAddr = null;
+    if (ethers.isAddress(addr)) {
+      validAddr = addr;
+    } else if (ethers.isAddress(addr.toLowerCase())) {
+      try {
+        validAddr = ethers.getAddress(addr.toLowerCase());
+      } catch (e) {
+        validAddr = addr.toLowerCase();
+      }
+    }
+
+    if (!validAddr) {
+      setErrorMsg('Invalid Ethereum wallet address format. (Must start with 0x and be 42 hexadecimal characters)');
       return;
     }
 
@@ -284,8 +299,8 @@ export default function AnalyzeWallet({ initialWalletAddress = '', onRegisterSuc
           </span>
         </div>
 
-        {/* Demo Quick Select Buttons (Only in Demo Mode) */}
-        {analysisMode === 'demo' && (
+        {/* Quick Select Buttons */}
+        {analysisMode === 'demo' ? (
           <div className="mb-6 p-4 rounded-2xl bg-slate-950/50 border border-slate-800/60 space-y-2">
             <span className="text-[11px] font-semibold text-slate-400 block font-mono">
               Quick Select Sample Demo Wallets:
@@ -314,6 +329,32 @@ export default function AnalyzeWallet({ initialWalletAddress = '', onRegisterSuc
                 <span>3. High Risk Wallet</span>
                 <span className="text-[10px] bg-rose-500/20 px-1.5 py-0.5 rounded font-mono">78/100</span>
               </button>
+            </div>
+          </div>
+        ) : (
+          <div className="mb-6 p-4 rounded-2xl bg-blue-950/20 border border-blue-500/20 space-y-2">
+            <span className="text-[11px] font-semibold text-cyan-300 block font-mono">
+              Quick Select Verified Live Mainnet Ethereum Addresses:
+            </span>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
+              {[
+                { name: 'Vitalik Buterin', addr: '0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045' },
+                { name: 'Binance Hot Wallet', addr: '0x28C6c06298d514Db089934071355E5743bf21d60' },
+                { name: 'Ethereum Foundation', addr: '0xde0B295669a9FD93d5F28D9Ec85E40f4cb697BAe' },
+                { name: 'Uniswap V3 Router', addr: '0xE592427A0AEce92De3Edee1F18E0157C05861564' },
+              ].map((item, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => {
+                    setAddressInput(item.addr);
+                    handleAnalyze(item.addr, 'live');
+                  }}
+                  className="p-2.5 rounded-xl bg-slate-900 hover:bg-cyan-950/40 border border-slate-800 hover:border-cyan-500/40 text-left transition group"
+                >
+                  <span className="text-xs font-bold text-slate-200 group-hover:text-cyan-400 block">{item.name}</span>
+                  <span className="font-mono text-[10px] text-slate-500 truncate block">{formatAddress(item.addr)}</span>
+                </button>
+              ))}
             </div>
           </div>
         )}

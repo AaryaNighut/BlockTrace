@@ -7,11 +7,24 @@ const ETHERSCAN_API_KEY = import.meta.env.VITE_ETHERSCAN_API_KEY || '';
  * @param {string} address Public 0x... Ethereum address
  */
 export async function fetchRealWalletData(address) {
-  if (!address || !ethers.isAddress(address)) {
+  if (!address) {
     throw new Error('Invalid Ethereum wallet address.');
   }
 
-  const cleanAddress = address.trim();
+  let cleanAddress = String(address).trim();
+  if (cleanAddress.startsWith('0X')) {
+    cleanAddress = '0x' + cleanAddress.substring(2);
+  }
+
+  if (!ethers.isAddress(cleanAddress) && !ethers.isAddress(cleanAddress.toLowerCase())) {
+    throw new Error('Invalid Ethereum wallet address format. (Must be a 42-character 0x address)');
+  }
+
+  try {
+    cleanAddress = ethers.getAddress(cleanAddress.toLowerCase());
+  } catch (e) {
+    cleanAddress = cleanAddress.toLowerCase();
+  }
   const apiKey = ETHERSCAN_API_KEY !== 'YOUR_ETHERSCAN_API_KEY' ? ETHERSCAN_API_KEY : '';
 
   // Etherscan API V2 URL (chainid=1 for Ethereum Mainnet)
