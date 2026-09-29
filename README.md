@@ -220,6 +220,6 @@ The risk engine starts at 0 points and adds **+20 points** for each triggered in
 
 ```powershell
 cd c:\Users\aarya\Desktop\BCT\blocktrace
-git remote add origin https://github.com/YOUR_USERNAME/blocktrace.git
+git remote add origin https://github.com/AaryaNighut/blocktrace.git
 git push -u origin main
 ```
