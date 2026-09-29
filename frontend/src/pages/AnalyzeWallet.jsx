@@ -14,7 +14,8 @@ import {
   Send,
   Loader2,
   Globe,
-  Database
+  Database,
+  Dices
 } from 'lucide-react';
 import { ethers } from 'ethers';
 import RiskGauge from '../components/RiskGauge';
@@ -228,6 +229,18 @@ export default function AnalyzeWallet({ initialWalletAddress = '', onRegisterSuc
     }
   };
 
+  const handleGenerateRandomAddress = () => {
+    try {
+      const randomWallet = ethers.Wallet.createRandom();
+      setAddressInput(randomWallet.address);
+      handleAnalyze(randomWallet.address);
+    } catch (err) {
+      const hex = '0x' + Array.from({ length: 40 }, () => Math.floor(Math.random() * 16).toString(16)).join('');
+      setAddressInput(hex);
+      handleAnalyze(hex);
+    }
+  };
+
   return (
     <div className="space-y-8 animate-fadeIn max-w-5xl mx-auto">
       {/* Search Header Form */}
@@ -387,6 +400,16 @@ export default function AnalyzeWallet({ initialWalletAddress = '', onRegisterSuc
                   <span>Analyze Wallet</span>
                 </>
               )}
+            </button>
+
+            <button
+              type="button"
+              onClick={handleGenerateRandomAddress}
+              disabled={isAnalyzing}
+              className="w-full sm:w-auto px-4 py-3.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-cyan-400 font-semibold text-xs transition border border-slate-700/80 shrink-0 flex items-center justify-center gap-1.5"
+            >
+              <Dices className="w-4 h-4 text-cyan-400" />
+              <span>Random Address</span>
             </button>
           </div>
 
