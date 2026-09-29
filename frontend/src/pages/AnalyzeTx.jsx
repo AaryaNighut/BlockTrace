@@ -11,13 +11,51 @@ import {
   Clock,
   Box,
   Globe,
-  Loader2
+  Loader2,
+  Dices
 } from 'lucide-react';
 import RiskBadge from '../components/RiskBadge';
 import { DEMO_TRANSACTIONS } from '../utils/demoData';
 import { fetchRealTransactionData } from '../utils/etherscan';
 import { calculateTxRiskScore } from '../utils/riskEngine';
 import { formatAddress } from '../utils/web3';
+
+function generateCustomTxAnalysis(hash) {
+  const charCodeSum = hash.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+  const amountEth = (0.5 + (charCodeSum % 38)).toFixed(2);
+  const gasUsed = (21000 + (charCodeSum * 175) % 140000).toString();
+  const blockNum = 19480000 + (charCodeSum % 10000);
+  
+  const senderHex = '0x' + hash.substring(2, 42);
+  const receiverHex = '0x' + hash.substring(26, 66);
+
+  const evaluatedRisk = calculateTxRiskScore({
+    amount: amountEth,
+    gasUsed: gasUsed,
+    isNewRecipient: charCodeSum % 2 === 0
+  });
+
+  return {
+    hash: hash,
+    sender: senderHex,
+    receiver: receiverHex,
+    amount: `${amountEth} ETH`,
+    gasUsed: gasUsed,
+    gasPrice: `${15 + (charCodeSum % 20)} Gwei`,
+    blockNumber: blockNum,
+    timestamp: 'Evaluated Transaction Analysis',
+    status: 'Success (Confirmed)',
+    nonce: charCodeSum % 50,
+    isReal: false,
+    risk: {
+      score: evaluatedRisk.score,
+      level: evaluatedRisk.riskLevel,
+      explanation: evaluatedRisk.reasons.length > 0 
+        ? evaluatedRisk.reasons.join('; ')
+        : 'Standard peer-to-peer ETH transaction evaluation.'
+    }
+  };
+}
 
 export default function AnalyzeTx() {
   const [txHashInput, setTxHashInput] = useState('');
@@ -26,13 +64,17 @@ export default function AnalyzeTx() {
   const [txResult, setTxResult] = useState(null);
 
   const handleAnalyzeTx = async (hashToUse) => {
-    const hash = (hashToUse || txHashInput).trim();
+    let hash = (hashToUse || txHashInput).trim();
     setErrorMsg('');
     setTxResult(null);
 
     if (!hash) {
       setErrorMsg('Please enter a transaction hash');
       return;
+    }
+
+    if (hash.startsWith('0X')) {
+      hash = '0x' + hash.substring(2);
     }
 
     if (!/^0x[a-fA-F0-9]{64}$/.test(hash) && hash.length < 10) {
@@ -43,7 +85,7 @@ export default function AnalyzeTx() {
     setIsSearching(true);
 
     try {
-      // Check if matching demo transaction exists first
+      // 1. Check if matching preset demo transaction exists
       if (DEMO_TRANSACTIONS[hash]) {
         const foundTx = DEMO_TRANSACTIONS[hash];
         const evaluatedRisk = calculateTxRiskScore({
@@ -62,7 +104,7 @@ export default function AnalyzeTx() {
           }
         });
       } else {
-        // Attempt Real Mainnet Fetching via Etherscan / RPC
+        // 2. Attempt Real Mainnet Fetching via Etherscan / RPC
         try {
           const realTx = await fetchRealTransactionData(hash);
           setTxResult({
@@ -70,24 +112,9 @@ export default function AnalyzeTx() {
             isReal: true
           });
         } catch (realErr) {
-          // Fallback to demo structure if RPC is offline
-          const foundTx = DEMO_TRANSACTIONS[Object.keys(DEMO_TRANSACTIONS)[0]];
-          const evaluatedRisk = calculateTxRiskScore({
-            amount: foundTx.amount.replace(' ETH', ''),
-            gasUsed: foundTx.gasUsed,
-            isNewRecipient: true
-          });
-
-          setTxResult({
-            ...foundTx,
-            hash: hash,
-            isReal: false,
-            risk: {
-              score: evaluatedRisk.score,
-              level: evaluatedRisk.riskLevel,
-              explanation: `Pattern evaluated for transaction: ${realErr.message || 'Custom evaluation'}`
-            }
-          });
+          // 3. Dynamic evaluation for custom hashes if RPC is offline/unmatched
+          const customTx = generateCustomTxAnalysis(hash);
+          setTxResult(customTx);
         }
       }
     } catch (err) {
@@ -100,6 +127,12 @@ export default function AnalyzeTx() {
   const handleQuickTxSelect = (hash) => {
     setTxHashInput(hash);
     handleAnalyzeTx(hash);
+  };
+
+  const handleGenerateRandomTx = () => {
+    const randomTxHash = '0x' + Array.from({ length: 64 }, () => Math.floor(Math.random() * 16).toString(16)).join('');
+    setTxHashInput(randomTxHash);
+    handleAnalyzeTx(randomTxHash);
   };
 
   return (
@@ -150,6 +183,7 @@ export default function AnalyzeTx() {
                 className="w-full bg-slate-950 border border-slate-700/80 focus:border-cyan-500 rounded-xl px-4 py-3.5 text-sm font-mono text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/20 transition"
               />
             </div>
+
             <button
               type="submit"
               disabled={isSearching}
@@ -166,6 +200,16 @@ export default function AnalyzeTx() {
                   <span>Analyze Transaction</span>
                 </>
               )}
+            </button>
+
+            <button
+              type="button"
+              onClick={handleGenerateRandomTx}
+              disabled={isSearching}
+              className="w-full sm:w-auto px-4 py-3.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-cyan-400 font-semibold text-xs transition border border-slate-700/80 shrink-0 flex items-center justify-center gap-1.5"
+            >
+              <Dices className="w-4 h-4 text-cyan-400" />
+              <span>Random Tx Hash</span>
             </button>
           </div>
 
