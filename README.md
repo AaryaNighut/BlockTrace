@@ -1,54 +1,34 @@
 # BlockTrace – Cryptocurrency Transaction Tracking & Risk Analysis DApp
 
 > **College Blockchain Technology Mini-Project**  
-> A decentralized web application designed to analyze cryptocurrency wallet activity, calculate rule-based risk scores, and store immutable investigation audit records on the Ethereum blockchain using Solidity smart contracts.
+> A full-stack decentralized web application designed to analyze cryptocurrency wallet activity, calculate rule-based risk scores, and store immutable investigation audit records on the Ethereum blockchain using Solidity smart contracts.
 
 ---
 
-## 🌐 REAL ETHEREUM WALLET ANALYSIS (NEW FEATURE)
+## ✅ PROJECT STATUS: COMPLETE (100% WORKING)
 
-BlockTrace now supports both **Offline Demo Mode** and **Live Ethereum Mainnet Mode** via the Etherscan API V2.
-
-### 🔑 How to Set Up Live Ethereum Mode with Etherscan API:
-
-1. **Get a Free Etherscan API Key:**
-   - Sign up for a free account at [https://etherscan.io/myapikey](https://etherscan.io/myapikey).
-   - Create a new API key token.
-
-2. **Create Your `.env` File:**
-   - In the `frontend/` folder, copy `.env.example` to `.env`:
-     ```powershell
-     cp frontend/.env.example frontend/.env
-     ```
-   - Open `frontend/.env` and paste your API key:
-     ```env
-     VITE_ETHERSCAN_API_KEY=YOUR_ETHERSCAN_API_KEY_HERE
-     ```
-
-3. **Analyze Any Public Ethereum Wallet Address:**
-   - Start the frontend (`npm run dev`).
-   - Navigate to **"Analyze Wallet"** on the sidebar.
-   - Click the mode toggle: **`[ Live Ethereum ]`**.
-   - Enter any valid public Ethereum address (e.g., `0x742d35Cc6634C0532925a3b844Bc454e4438f44e` or `vitalik.eth` address `0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045`).
-   - Click **"Analyze Wallet"**.
-   - BlockTrace fetches live mainnet transaction history, parses Wei values to ETH, computes unique counterparties & transfer magnitude, and calculates the risk score (0–100).
-
-> [!IMPORTANT]  
-> **Offline Demo Mode:** If no API key is provided, **Demo Mode remains 100% functional** without requiring any setup or external API key!
+- **Smart Contract:** `InvestigationRegistry.sol` compiled & deployed (6/6 Hardhat unit tests passing).
+- **Frontend Dashboard:** React.js + Vite + Tailwind CSS (Dark Cybersecurity Theme).
+- **Dual Analysis Modes:**
+  - 🟢 **Educational Demo Mode:** 100% offline-compatible for college presentations (Requires NO API key).
+  - 🔵 **Live Ethereum Mode:** Queries live Ethereum Mainnet transaction history via Etherscan API V2.
+- **Web3 & MetaMask:** Non-custodial wallet connection to Hardhat local testnet (Chain ID `31337`).
+- **Audit Registry:** On-chain record registration and searchable investigation history.
 
 ---
 
-## 📌 Project Overview
+## 📌 Project Purpose & Features
 
-BlockTrace allows users to inspect any Ethereum wallet address or transaction hash, analyze transaction behavior, calculate a deterministic risk score (0–100), and register formal investigation snapshots directly to an Ethereum smart contract (`InvestigationRegistry.sol`).
-
-### Core Purpose
-- **Behavioral Risk Evaluation:** Analyzes transaction count, counterparty volume, transfer amounts, transaction velocity, and pattern anomalies.
-- **On-Chain Audit Trail:** Registers investigation snapshots permanently on the Ethereum blockchain.
-- **Educational Scope:** Built specifically for college demonstration with a built-in **Offline Demo Mode** (no external APIs required).
+1. **Wallet Address Inspection:** Accepts any public 42-character Ethereum address (`0x...`).
+2. **Behavioral Risk Engine:** Calculates a transparent, rule-based score from **0 to 100** (+20 points per triggered heuristic).
+3. **Risk Categorization:** Classifies activity into **LOW RISK (0-30)**, **MEDIUM RISK (31-60)**, and **HIGH RISK (61-100)** with non-incriminating terminology ("Potentially Unusual Activity", "Risk Indicators Detected").
+4. **On-Chain Audit Trail:** Registers investigation snapshots permanently on an Ethereum smart contract (`InvestigationRegistry.sol`).
+5. **Single Transaction Inspector:** Inspects transfer amounts, gas usage, sender/receiver counterparty details, and single-tx risk metrics.
+6. **Dynamic Random Address Generator:** Generates random valid addresses with dynamic risk score variations for presentation testing.
+7. **Verified Mainnet Shortcuts:** Quick-select buttons for high-profile mainnet addresses (Vitalik Buterin, Binance Hot Wallet, Ethereum Foundation, Uniswap Router).
 
 > [!NOTE]  
-> **Academic Disclaimer:** This application does **NOT** claim that an address belongs to a scammer or criminal entity. It identifies *potentially unusual activity patterns* based on transparent, rule-based heuristics.
+> **Academic Disclaimer:** This application does **NOT** claim that an address belongs to a scammer or criminal entity. It strictly identifies *potentially unusual transaction patterns* based on transparent, rule-based heuristics.
 
 ---
 
@@ -88,7 +68,7 @@ blocktrace/
 │   │   │   ├── Navbar.jsx           # Topbar with MetaMask status
 │   │   │   ├── StatCard.jsx         # Summary metrics widget
 │   │   │   ├── RiskBadge.jsx        # Risk level pill badge
-│   │   │   ├── RiskGauge.jsx        # Visual circular score meter
+│   │   │   ├── RiskGauge.jsx        # Visual circular score meter SVG
 │   │   │   └── Modal.jsx            # Reusable popup dialog
 │   │   ├── pages/
 │   │   │   ├── Dashboard.jsx        # Analytics dashboard overview
@@ -113,60 +93,76 @@ blocktrace/
 │   ├── tailwind.config.js
 │   └── postcss.config.js
 │
+├── .gitignore                       # Git ignore configuration (.env ignored)
 ├── .env.example                     # Environment template
 └── README.md                        # Documentation & Viva Q&A Guide
 ```
 
 ---
 
-## ⚙️ Installation & Step-by-Step Instructions
+## ⚙️ Installation & Setup
 
 ### Step 1: Open Project Directory
 ```powershell
 cd c:\Users\aarya\Desktop\BCT\blocktrace
 ```
 
-### Step 2: Install Blockchain & Frontend Dependencies
+### Step 2: Install Dependencies
 ```powershell
-# 1. Install blockchain dependencies
+# Install blockchain dependencies
 cd blockchain
 npm install
 
-# 2. Install frontend dependencies
+# Install frontend dependencies
 cd ..\frontend
 npm install
 ```
 
 ---
 
+## 🌐 Etherscan API Setup (Optional for Live Ethereum Mode)
+
+To analyze real Mainnet wallets via Live Ethereum Mode:
+1. Get a free API key at [https://etherscan.io/myapikey](https://etherscan.io/myapikey).
+2. Copy `frontend/.env.example` to `frontend/.env`:
+   ```powershell
+   cp frontend/.env.example frontend/.env
+   ```
+3. Open `frontend/.env` and paste your key:
+   ```env
+   VITE_ETHERSCAN_API_KEY=YOUR_ETHERSCAN_API_KEY_HERE
+   ```
+
+*(Note: Demo Mode works 100% offline without needing any API key!).*
+
+---
+
 ## 🚀 How to Run the Complete Project
 
 ### Step 3: Run Smart Contract Unit Tests
-Verify that the smart contract logic passes all tests:
 ```powershell
 cd c:\Users\aarya\Desktop\BCT\blocktrace\blockchain
 npx hardhat test
 ```
-*(All 6 unit tests pass).*
+*(Confirms 6/6 tests passing).*
 
 ### Step 4: Start Local Hardhat Ethereum Node
-Start a local blockchain testnet running on `http://127.0.0.1:8545`:
+Start a local blockchain node on `http://127.0.0.1:8545`:
 ```powershell
 cd c:\Users\aarya\Desktop\BCT\blocktrace\blockchain
 npx hardhat node
 ```
-*(Keep this terminal window running!).*
+*(Keep this terminal running!).*
 
 ### Step 5: Deploy Smart Contract to Local Network
-In a **second terminal window**, deploy `InvestigationRegistry.sol`:
+In a **second terminal**, deploy `InvestigationRegistry.sol`:
 ```powershell
 cd c:\Users\aarya\Desktop\BCT\blocktrace\blockchain
 npx hardhat run scripts/deploy.js --network localhost
 ```
-*This deploys the contract to local network and exports contract ABI & address to `frontend/src/contracts/`.*
 
 ### Step 6: Start React Frontend
-In a **third terminal window**, start Vite dev server:
+In a **third terminal**, launch Vite dev server:
 ```powershell
 cd c:\Users\aarya\Desktop\BCT\blocktrace\frontend
 npm run dev
@@ -178,13 +174,10 @@ Open your browser at `http://localhost:5173`.
 ## 🦊 How to Connect MetaMask
 
 1. Install the **MetaMask** browser extension.
-2. Add the **Hardhat Localhost** network to MetaMask:
-   - **RPC URL:** `http://127.0.0.1:8545`
-   - **Chain ID:** `31337`
-   - **Currency Symbol:** `ETH`
-3. Import Account #0 Private Key from your `npx hardhat node` terminal output:
+2. Add network: **Hardhat Localhost** (`http://127.0.0.1:8545`, Chain ID `31337`).
+3. Import Account #0 Private Key from `npx hardhat node` output:
    `0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80`
-4. Click **"Connect MetaMask"** in the BlockTrace navbar.
+4. Click **"Connect MetaMask"** in the BlockTrace top bar.
 
 ---
 
@@ -194,7 +187,7 @@ The risk engine starts at 0 points and adds **+20 points** for each triggered in
 
 1. **High Transaction Frequency (+20):** Total transactions $\ge 25$.
 2. **Multiple Counterparty Addresses (+20):** Unique addresses $\ge 10$.
-3. **Large Transfer Volume (+20):** ETH transfer $\ge 10\text{ ETH}$.
+3. **Large Transfer Volume (+20):** Single ETH transfer $\ge 10\text{ ETH}$.
 4. **Rapid Sequence Transfers (+20):** Sub-minute back-to-back transfer sequence.
 5. **Unusual Pattern Structure (+20):** Suspicious distribution or fan-out pattern.
 
@@ -202,3 +195,31 @@ The risk engine starts at 0 points and adds **+20 points** for each triggered in
 - **0 – 30:** `LOW RISK` (Green)
 - **31 – 60:** `MEDIUM RISK` (Yellow)
 - **61 – 100:** `HIGH RISK` (Red)
+
+---
+
+## 🎓 Viva Q&A Quick Reference
+
+### Q1: What is the main objective of BlockTrace?
+**Answer:** BlockTrace is a decentralized risk intelligence prototype designed to analyze cryptocurrency wallet activity using deterministic rule-based algorithms and store permanent investigation audit snapshots on the Ethereum blockchain.
+
+### Q2: Which smart contract functions are implemented?
+**Answer:**
+- `registerInvestigation(walletAddress, riskScore, riskLevel, primaryReason)`
+- `getInvestigation(investigationId)`
+- `getTotalInvestigations()`
+- `getAllInvestigations()`
+- `getInvestigationsByWallet(walletAddress)`
+
+### Q3: Why use deterministic rule-based scoring instead of ML?
+**Answer:** Deterministic rules offer 100% explainability, auditability, and mathematical consistency. Analyzing the same address on the blockchain will always yield the exact same verifiable risk score.
+
+---
+
+## 📤 Pushing to GitHub
+
+```powershell
+cd c:\Users\aarya\Desktop\BCT\blocktrace
+git remote add origin https://github.com/YOUR_USERNAME/blocktrace.git
+git push -u origin main
+```
