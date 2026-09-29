@@ -11,7 +11,10 @@ import {
   ArrowDownLeft,
   FileCheck2,
   Clock,
-  Send
+  Send,
+  Loader2,
+  Globe,
+  Database
 } from 'lucide-react';
 import { ethers } from 'ethers';
 import RiskGauge from '../components/RiskGauge';
@@ -19,9 +22,13 @@ import RiskBadge from '../components/RiskBadge';
 import Modal from '../components/Modal';
 import { calculateRiskScore } from '../utils/riskEngine';
 import { DEMO_WALLETS } from '../utils/demoData';
+import { fetchRealWalletData } from '../utils/etherscan';
 import { registerInvestigationOnChain, formatAddress, formatTimestamp } from '../utils/web3';
 
 export default function AnalyzeWallet({ initialWalletAddress = '', onRegisterSuccess }) {
+  // Mode selection: 'demo' or 'live'
+  const [analysisMode, setAnalysisMode] = useState('demo');
+
   const [addressInput, setAddressInput] = useState(initialWalletAddress);
   const [errorMsg, setErrorMsg] = useState('');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -35,11 +42,11 @@ export default function AnalyzeWallet({ initialWalletAddress = '', onRegisterSuc
   useEffect(() => {
     if (initialWalletAddress) {
       setAddressInput(initialWalletAddress);
-      handleAnalyze(initialWalletAddress);
+      handleAnalyze(initialWalletAddress, analysisMode);
     }
   }, [initialWalletAddress]);
 
-  const handleAnalyze = (targetAddress) => {
+  const handleAnalyze = async (targetAddress, modeToUse = analysisMode) => {
     const addr = (targetAddress || addressInput).trim();
     setErrorMsg('');
     setAnalysisResult(null);
@@ -47,61 +54,84 @@ export default function AnalyzeWallet({ initialWalletAddress = '', onRegisterSuc
     setRegError('');
 
     if (!addr) {
-      setErrorMsg('Please enter an Ethereum wallet address');
+      setErrorMsg('Invalid Ethereum wallet address.');
       return;
     }
 
     if (!ethers.isAddress(addr)) {
-      setErrorMsg('Invalid Ethereum wallet address format (Must start with 0x and be 42 characters hex)');
+      setErrorMsg('Invalid Ethereum wallet address.');
       return;
     }
 
     setIsAnalyzing(true);
 
-    setTimeout(() => {
-      // Find matching demo wallet or generate standard evaluation
-      let walletData = Object.values(DEMO_WALLETS).find(
-        (w) => w.address.toLowerCase() === addr.toLowerCase()
-      );
+    try {
+      if (modeToUse === 'live') {
+        // Fetch Real Ethereum Mainnet Data
+        const realData = await fetchRealWalletData(addr);
+        const riskAssessment = calculateRiskScore(realData);
 
-      if (!walletData) {
-        // Fallback realistic metrics for custom address
-        walletData = {
-          address: addr,
-          label: 'Custom Analyzed Wallet',
-          description: 'Live custom address risk assessment',
-          totalTx: 18,
-          totalReceived: '32.10 ETH',
-          totalSent: '28.50 ETH',
-          uniqueAddresses: 12,
-          largeTxCount: 2,
-          isRapidSequence: true,
-          hasUnusualPattern: false,
-          firstSeen: '2026-06-12',
-          lastSeen: '2026-09-29',
-          recentActivity: [
-            { hash: '0xa1b2...c3d4', type: 'OUT', amount: '12.5 ETH', counterparty: '0x9910...ab12', time: '2 hours ago', status: 'Confirmed' },
-            { hash: '0xe5f6...g7h8', type: 'IN',  amount: '15.0 ETH', counterparty: '0x1f98...918b', time: '6 hours ago', status: 'Confirmed' },
-          ]
-        };
+        setAnalysisResult({
+          ...realData,
+          mode: 'live',
+          networkName: 'Ethereum Mainnet',
+          dataSourceName: 'Live Blockchain Data (Etherscan API)',
+          risk: riskAssessment
+        });
+      } else {
+        // Demo Mode (Offline Compatible)
+        await new Promise((res) => setTimeout(res, 500));
+
+        let walletData = Object.values(DEMO_WALLETS).find(
+          (w) => w.address.toLowerCase() === addr.toLowerCase()
+        );
+
+        if (!walletData) {
+          walletData = {
+            address: addr,
+            label: 'Custom Demo Wallet',
+            description: 'Offline pattern risk evaluation',
+            totalTx: 18,
+            totalReceived: '32.10 ETH',
+            totalSent: '28.50 ETH',
+            uniqueAddresses: 12,
+            largestTx: '12.5 ETH',
+            largeTxCount: 2,
+            isRapidSequence: true,
+            hasUnusualPattern: false,
+            firstSeen: '2026-06-12',
+            lastSeen: '2026-09-29',
+            recentActivity: [
+              { hash: '0xa1b2...c3d4', type: 'OUT', amount: '12.5 ETH', counterparty: '0x9910...ab12', time: '2 hours ago', status: 'Confirmed' },
+              { hash: '0xe5f6...g7h8', type: 'IN',  amount: '15.0 ETH', counterparty: '0x1f98...918b', time: '6 hours ago', status: 'Confirmed' },
+            ]
+          };
+        }
+
+        const riskAssessment = calculateRiskScore(walletData);
+
+        setAnalysisResult({
+          ...walletData,
+          mode: 'demo',
+          networkName: 'Educational Demo Network',
+          dataSourceName: 'Sample Dataset',
+          risk: riskAssessment
+        });
       }
-
-      const riskAssessment = calculateRiskScore(walletData);
-
-      setAnalysisResult({
-        ...walletData,
-        risk: riskAssessment
-      });
-
+    } catch (err) {
+      console.error('Wallet Analysis Error:', err);
+      setErrorMsg(err.message || 'Unable to fetch blockchain data. Please try again.');
+    } finally {
       setIsAnalyzing(false);
-    }, 600);
+    }
   };
 
   const handleQuickDemoSelect = (demoKey) => {
     const demo = DEMO_WALLETS[demoKey];
     if (demo) {
       setAddressInput(demo.address);
-      handleAnalyze(demo.address);
+      setAnalysisMode('demo');
+      handleAnalyze(demo.address, 'demo');
     }
   };
 
@@ -187,50 +217,106 @@ export default function AnalyzeWallet({ initialWalletAddress = '', onRegisterSuc
     <div className="space-y-8 animate-fadeIn max-w-5xl mx-auto">
       {/* Search Header Form */}
       <div className="cyber-card p-6 md:p-8 rounded-3xl border border-slate-800">
-        <h2 className="text-xl font-bold text-slate-100 flex items-center gap-2 mb-2">
-          <Search className="w-5 h-5 text-cyan-400" />
-          Analyze Cryptocurrency Wallet
-        </h2>
-        <p className="text-xs text-slate-400 leading-relaxed mb-6">
-          Enter an Ethereum wallet address below to evaluate its activity profile, transaction frequency, counterparty diversity, and rule-based risk classification.
-        </p>
-
-        {/* Demo Quick Select Buttons */}
-        <div className="mb-6 p-4 rounded-2xl bg-slate-950/70 border border-slate-800/80">
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
-              <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
-              Educational Demo Mode — Quick Select Sample Wallets:
-            </span>
-            <span className="text-[10px] text-slate-500 font-mono">Click to autofill</span>
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
+          <div>
+            <h2 className="text-xl font-bold text-slate-100 flex items-center gap-2">
+              <Search className="w-5 h-5 text-cyan-400" />
+              Analyze Cryptocurrency Wallet
+            </h2>
+            <p className="text-xs text-slate-400 mt-1">
+              Select analysis mode, enter an Ethereum wallet address, and analyze transaction activity & risk.
+            </p>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          {/* Mode Switch Toggle */}
+          <div className="flex items-center gap-1.5 p-1.5 rounded-xl bg-slate-950 border border-slate-800 self-start md:self-auto">
             <button
-              onClick={() => handleQuickDemoSelect('LOW_RISK')}
-              className="px-3.5 py-2.5 rounded-xl bg-slate-900 hover:bg-emerald-950/40 border border-emerald-500/30 text-emerald-400 text-xs font-semibold flex items-center justify-between transition group"
+              onClick={() => setAnalysisMode('demo')}
+              className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition ${
+                analysisMode === 'demo'
+                  ? 'bg-cyan-500 text-slate-950 font-bold shadow-md'
+                  : 'text-slate-400 hover:text-slate-200'
+              }`}
             >
-              <span>1. Low Risk Wallet</span>
-              <span className="text-[10px] bg-emerald-500/20 px-1.5 py-0.5 rounded font-mono">15/100</span>
+              <Database className="w-3.5 h-3.5" />
+              <span>Demo Mode</span>
             </button>
-
             <button
-              onClick={() => handleQuickDemoSelect('MEDIUM_RISK')}
-              className="px-3.5 py-2.5 rounded-xl bg-slate-900 hover:bg-amber-950/40 border border-amber-500/30 text-amber-400 text-xs font-semibold flex items-center justify-between transition group"
+              onClick={() => setAnalysisMode('live')}
+              className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition ${
+                analysisMode === 'live'
+                  ? 'bg-gradient-to-r from-blue-500 to-indigo-600 text-white font-bold shadow-md'
+                  : 'text-slate-400 hover:text-slate-200'
+              }`}
             >
-              <span>2. Medium Risk Wallet</span>
-              <span className="text-[10px] bg-amber-500/20 px-1.5 py-0.5 rounded font-mono">40/100</span>
-            </button>
-
-            <button
-              onClick={() => handleQuickDemoSelect('HIGH_RISK')}
-              className="px-3.5 py-2.5 rounded-xl bg-slate-900 hover:bg-rose-950/40 border border-rose-500/30 text-rose-400 text-xs font-semibold flex items-center justify-between transition group"
-            >
-              <span>3. High Risk Wallet</span>
-              <span className="text-[10px] bg-rose-500/20 px-1.5 py-0.5 rounded font-mono">78/100</span>
+              <Globe className="w-3.5 h-3.5 text-cyan-300 animate-pulse" />
+              <span>Live Ethereum</span>
             </button>
           </div>
         </div>
+
+        {/* Mode Indicator Banner */}
+        <div className={`mb-6 p-4 rounded-2xl border text-xs flex items-center justify-between ${
+          analysisMode === 'live'
+            ? 'bg-blue-950/40 border-blue-500/30 text-blue-200'
+            : 'bg-slate-950/70 border-slate-800/80 text-slate-300'
+        }`}>
+          <div className="flex items-center gap-2">
+            {analysisMode === 'live' ? (
+              <Globe className="w-4 h-4 text-cyan-400 shrink-0" />
+            ) : (
+              <Sparkles className="w-4 h-4 text-cyan-400 shrink-0" />
+            )}
+            <div>
+              <span className="font-bold block">
+                {analysisMode === 'live' ? 'LIVE ETHEREUM MODE' : 'EDUCATIONAL DEMO MODE'}
+              </span>
+              <span className="text-[11px] opacity-80">
+                {analysisMode === 'live'
+                  ? 'Network: Ethereum Mainnet | Data Source: Live Etherscan API'
+                  : 'Network: Educational Demo | Data Source: Pre-built Sample Dataset (Requires No API Key)'}
+              </span>
+            </div>
+          </div>
+
+          <span className="hidden sm:inline-block font-mono text-[10px] px-2.5 py-1 rounded bg-slate-900 border border-slate-700">
+            {analysisMode === 'live' ? 'Chain ID: 1' : 'Offline Mode'}
+          </span>
+        </div>
+
+        {/* Demo Quick Select Buttons (Only in Demo Mode) */}
+        {analysisMode === 'demo' && (
+          <div className="mb-6 p-4 rounded-2xl bg-slate-950/50 border border-slate-800/60 space-y-2">
+            <span className="text-[11px] font-semibold text-slate-400 block font-mono">
+              Quick Select Sample Demo Wallets:
+            </span>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <button
+                onClick={() => handleQuickDemoSelect('LOW_RISK')}
+                className="px-3 py-2 rounded-xl bg-slate-900 hover:bg-emerald-950/40 border border-emerald-500/30 text-emerald-400 text-xs font-semibold flex items-center justify-between transition"
+              >
+                <span>1. Low Risk Wallet</span>
+                <span className="text-[10px] bg-emerald-500/20 px-1.5 py-0.5 rounded font-mono">15/100</span>
+              </button>
+
+              <button
+                onClick={() => handleQuickDemoSelect('MEDIUM_RISK')}
+                className="px-3 py-2 rounded-xl bg-slate-900 hover:bg-amber-950/40 border border-amber-500/30 text-amber-400 text-xs font-semibold flex items-center justify-between transition"
+              >
+                <span>2. Medium Risk Wallet</span>
+                <span className="text-[10px] bg-amber-500/20 px-1.5 py-0.5 rounded font-mono">40/100</span>
+              </button>
+
+              <button
+                onClick={() => handleQuickDemoSelect('HIGH_RISK')}
+                className="px-3 py-2 rounded-xl bg-slate-900 hover:bg-rose-950/40 border border-rose-500/30 text-rose-400 text-xs font-semibold flex items-center justify-between transition"
+              >
+                <span>3. High Risk Wallet</span>
+                <span className="text-[10px] bg-rose-500/20 px-1.5 py-0.5 rounded font-mono">78/100</span>
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Input Bar */}
         <form onSubmit={(e) => { e.preventDefault(); handleAnalyze(); }} className="space-y-3">
@@ -247,15 +333,24 @@ export default function AnalyzeWallet({ initialWalletAddress = '', onRegisterSuc
             <button
               type="submit"
               disabled={isAnalyzing}
-              className="w-full sm:w-auto px-6 py-3.5 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-slate-950 font-bold text-sm tracking-wide shadow-lg shadow-cyan-500/20 transition transform active:scale-95 shrink-0 flex items-center justify-center gap-2"
+              className="w-full sm:w-auto px-6 py-3.5 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-slate-950 font-bold text-sm tracking-wide shadow-lg shadow-cyan-500/20 transition transform active:scale-95 shrink-0 flex items-center justify-center gap-2 disabled:opacity-60"
             >
-              <Search className="w-4 h-4" />
-              <span>{isAnalyzing ? 'Analyzing...' : 'Analyze Wallet'}</span>
+              {isAnalyzing ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin text-slate-950" />
+                  <span>Fetching Data...</span>
+                </>
+              ) : (
+                <>
+                  <Search className="w-4 h-4 text-slate-950" />
+                  <span>Analyze Wallet</span>
+                </>
+              )}
             </button>
           </div>
 
           {errorMsg && (
-            <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs flex items-center gap-2">
+            <div className="p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs flex items-center gap-2">
               <AlertCircle className="w-4 h-4 shrink-0" />
               <span>{errorMsg}</span>
             </div>
@@ -263,8 +358,25 @@ export default function AnalyzeWallet({ initialWalletAddress = '', onRegisterSuc
         </form>
       </div>
 
+      {/* Loading Spinner Indicator */}
+      {isAnalyzing && (
+        <div className="cyber-card p-12 rounded-3xl border border-slate-800 text-center space-y-4 animate-fadeIn">
+          <Loader2 className="w-10 h-10 text-cyan-400 animate-spin mx-auto" />
+          <div>
+            <h3 className="text-base font-bold text-slate-100">
+              {analysisMode === 'live'
+                ? 'Fetching Ethereum transaction history...'
+                : 'Processing pattern analysis engine...'}
+            </h3>
+            <p className="text-xs text-slate-400 mt-1">
+              Evaluating transaction frequency, unique counterparties, and transfer volume...
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Analysis Results */}
-      {analysisResult && (
+      {analysisResult && !isAnalyzing && (
         <div className="space-y-8 animate-fadeIn">
           {/* Main Risk Summary Card */}
           <div className="cyber-card p-6 md:p-8 rounded-3xl border border-slate-800 grid grid-cols-1 md:grid-cols-3 gap-8 items-center">
@@ -285,11 +397,15 @@ export default function AnalyzeWallet({ initialWalletAddress = '', onRegisterSuc
             {/* Right: Key Indicators Breakdown */}
             <div className="md:col-span-2 space-y-4">
               <div className="flex items-center justify-between">
-                <h3 className="text-base font-bold text-slate-100">Risk Assessment Indicators</h3>
-                <span className="text-[11px] font-mono text-slate-400">Rule-Based Formula (+20 per trigger)</span>
+                <h3 className="text-base font-bold text-slate-100">
+                  {analysisResult.mode === 'live' ? 'REAL ETHEREUM WALLET ANALYSIS' : 'DEMO WALLET ANALYSIS'}
+                </h3>
+                <span className="text-[11px] font-mono text-cyan-400 bg-cyan-500/10 px-2.5 py-1 rounded border border-cyan-500/20">
+                  {analysisResult.networkName}
+                </span>
               </div>
 
-              <div className="space-y-2.5">
+              <div className="space-y-2">
                 {[
                   { label: 'High Transaction Frequency (>= 25 txs)', active: analysisResult.risk.indicators.highFrequency },
                   { label: 'Multiple Interacting Counterparty Addresses (>= 10)', active: analysisResult.risk.indicators.multipleAddresses },
@@ -320,9 +436,9 @@ export default function AnalyzeWallet({ initialWalletAddress = '', onRegisterSuc
                 ))}
               </div>
 
-              {/* Specific Triggered Explanations */}
-              <div className="mt-4 p-4 rounded-xl bg-slate-950/80 border border-slate-800 space-y-2">
-                <span className="text-xs font-bold text-slate-300 block">Analysis Summary & Explanations:</span>
+              {/* Explanations Summary */}
+              <div className="p-4 rounded-xl bg-slate-950/80 border border-slate-800 space-y-2">
+                <span className="text-xs font-bold text-slate-300 block">Risk Indicators Summary:</span>
                 {analysisResult.risk.reasons.length > 0 ? (
                   <ul className="space-y-1 text-xs text-slate-400 list-disc list-inside">
                     {analysisResult.risk.reasons.map((r, i) => (
@@ -330,7 +446,9 @@ export default function AnalyzeWallet({ initialWalletAddress = '', onRegisterSuc
                     ))}
                   </ul>
                 ) : (
-                  <p className="text-xs text-slate-400">No high-risk activity flags triggered. Wallet activity falls within standard baseline parameters.</p>
+                  <p className="text-xs text-slate-400">
+                    No elevated risk indicators detected. Wallet activity falls within standard baseline parameters.
+                  </p>
                 )}
               </div>
             </div>
@@ -343,11 +461,11 @@ export default function AnalyzeWallet({ initialWalletAddress = '', onRegisterSuc
               <span className="text-2xl font-bold text-slate-100 font-mono mt-1 block">{analysisResult.totalTx}</span>
             </div>
             <div className="cyber-card p-5 rounded-2xl border border-slate-800">
-              <span className="text-xs font-medium text-slate-400 uppercase tracking-wider block">Total Received</span>
+              <span className="text-xs font-medium text-slate-400 uppercase tracking-wider block">Total ETH Received</span>
               <span className="text-2xl font-bold text-emerald-400 font-mono mt-1 block">{analysisResult.totalReceived}</span>
             </div>
             <div className="cyber-card p-5 rounded-2xl border border-slate-800">
-              <span className="text-xs font-medium text-slate-400 uppercase tracking-wider block">Total Sent</span>
+              <span className="text-xs font-medium text-slate-400 uppercase tracking-wider block">Total ETH Sent</span>
               <span className="text-2xl font-bold text-rose-400 font-mono mt-1 block">{analysisResult.totalSent}</span>
             </div>
             <div className="cyber-card p-5 rounded-2xl border border-slate-800">
@@ -358,9 +476,15 @@ export default function AnalyzeWallet({ initialWalletAddress = '', onRegisterSuc
 
           {/* Recent Activity Table */}
           <div className="cyber-card rounded-2xl border border-slate-800 overflow-hidden">
-            <div className="p-6 border-b border-slate-800">
-              <h3 className="text-base font-bold text-slate-100">Recent Transaction Log</h3>
-              <p className="text-xs text-slate-400">Sample of latest transactions recorded for this wallet</p>
+            <div className="p-6 border-b border-slate-800 flex items-center justify-between">
+              <div>
+                <h3 className="text-base font-bold text-slate-100">
+                  {analysisResult.mode === 'live' ? 'Real Ethereum Transaction Log' : 'Sample Recent Activity Log'}
+                </h3>
+                <p className="text-xs text-slate-400">
+                  {analysisResult.mode === 'live' ? 'Fetched from Etherscan API' : 'Sample demo activity'}
+                </p>
+              </div>
             </div>
 
             <div className="overflow-x-auto">
@@ -371,27 +495,49 @@ export default function AnalyzeWallet({ initialWalletAddress = '', onRegisterSuc
                     <th className="px-6 py-3.5">Type</th>
                     <th className="px-6 py-3.5">Amount</th>
                     <th className="px-6 py-3.5">Counterparty</th>
-                    <th className="px-6 py-3.5">Time</th>
+                    <th className="px-6 py-3.5">Date</th>
                     <th className="px-6 py-3.5">Status</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-800/60 text-slate-300 font-mono">
-                  {analysisResult.recentActivity.map((tx, idx) => (
-                    <tr key={idx} className="hover:bg-slate-800/40 transition">
-                      <td className="px-6 py-3.5 text-cyan-400">{tx.hash}</td>
-                      <td className="px-6 py-3.5">
-                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                          tx.type === 'IN' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-rose-500/20 text-rose-400'
-                        }`}>
-                          {tx.type}
-                        </span>
+                  {analysisResult.recentActivity.length > 0 ? (
+                    analysisResult.recentActivity.map((tx, idx) => (
+                      <tr key={idx} className="hover:bg-slate-800/40 transition">
+                        <td className="px-6 py-3.5 text-cyan-400">
+                          {analysisResult.mode === 'live' ? (
+                            <a
+                              href={`https://etherscan.io/tx/${tx.hash}`}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="hover:underline flex items-center gap-1"
+                            >
+                              <span>{formatAddress(tx.hash)}</span>
+                              <ExternalLink className="w-3 h-3 opacity-60" />
+                            </a>
+                          ) : (
+                            formatAddress(tx.hash)
+                          )}
+                        </td>
+                        <td className="px-6 py-3.5">
+                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                            tx.type === 'IN' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-rose-500/20 text-rose-400'
+                          }`}>
+                            {tx.type}
+                          </span>
+                        </td>
+                        <td className="px-6 py-3.5 font-bold text-slate-200">{tx.amount}</td>
+                        <td className="px-6 py-3.5 text-slate-400">{tx.counterparty}</td>
+                        <td className="px-6 py-3.5 text-slate-400">{tx.time}</td>
+                        <td className="px-6 py-3.5 text-emerald-400">{tx.status}</td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan="6" className="px-6 py-8 text-center text-slate-500 font-sans">
+                        No transactions recorded for this wallet address.
                       </td>
-                      <td className="px-6 py-3.5 font-bold text-slate-200">{tx.amount}</td>
-                      <td className="px-6 py-3.5 text-slate-400">{tx.counterparty}</td>
-                      <td className="px-6 py-3.5 text-slate-400">{tx.time}</td>
-                      <td className="px-6 py-3.5 text-emerald-400">{tx.status}</td>
                     </tr>
-                  ))}
+                  )}
                 </tbody>
               </table>
             </div>

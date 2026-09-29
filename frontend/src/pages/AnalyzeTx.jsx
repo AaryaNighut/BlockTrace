@@ -9,10 +9,13 @@ import {
   ExternalLink,
   ShieldAlert,
   Clock,
-  Box
+  Box,
+  Globe,
+  Loader2
 } from 'lucide-react';
 import RiskBadge from '../components/RiskBadge';
 import { DEMO_TRANSACTIONS } from '../utils/demoData';
+import { fetchRealTransactionData } from '../utils/etherscan';
 import { calculateTxRiskScore } from '../utils/riskEngine';
 import { formatAddress } from '../utils/web3';
 
@@ -22,7 +25,7 @@ export default function AnalyzeTx() {
   const [isSearching, setIsSearching] = useState(false);
   const [txResult, setTxResult] = useState(null);
 
-  const handleAnalyzeTx = (hashToUse) => {
+  const handleAnalyzeTx = async (hashToUse) => {
     const hash = (hashToUse || txHashInput).trim();
     setErrorMsg('');
     setTxResult(null);
@@ -39,28 +42,59 @@ export default function AnalyzeTx() {
 
     setIsSearching(true);
 
-    setTimeout(() => {
-      // Find matching demo transaction or construct fallback demo
-      let foundTx = DEMO_TRANSACTIONS[hash] || DEMO_TRANSACTIONS[Object.keys(DEMO_TRANSACTIONS)[0]];
-      
-      const evaluatedRisk = calculateTxRiskScore({
-        amount: foundTx.amount.replace(' ETH', ''),
-        gasUsed: foundTx.gasUsed,
-        isNewRecipient: true
-      });
+    try {
+      // Check if matching demo transaction exists first
+      if (DEMO_TRANSACTIONS[hash]) {
+        const foundTx = DEMO_TRANSACTIONS[hash];
+        const evaluatedRisk = calculateTxRiskScore({
+          amount: foundTx.amount.replace(' ETH', ''),
+          gasUsed: foundTx.gasUsed,
+          isNewRecipient: true
+        });
 
-      setTxResult({
-        ...foundTx,
-        hash: hash.length > 20 ? hash : foundTx.hash,
-        risk: {
-          score: evaluatedRisk.score,
-          level: evaluatedRisk.riskLevel,
-          explanation: foundTx.risk?.explanation || evaluatedRisk.reasons.join('; ')
+        setTxResult({
+          ...foundTx,
+          isReal: false,
+          risk: {
+            score: evaluatedRisk.score,
+            level: evaluatedRisk.riskLevel,
+            explanation: foundTx.risk?.explanation || evaluatedRisk.reasons.join('; ')
+          }
+        });
+      } else {
+        // Attempt Real Mainnet Fetching via Etherscan / RPC
+        try {
+          const realTx = await fetchRealTransactionData(hash);
+          setTxResult({
+            ...realTx,
+            isReal: true
+          });
+        } catch (realErr) {
+          // Fallback to demo structure if RPC is offline
+          const foundTx = DEMO_TRANSACTIONS[Object.keys(DEMO_TRANSACTIONS)[0]];
+          const evaluatedRisk = calculateTxRiskScore({
+            amount: foundTx.amount.replace(' ETH', ''),
+            gasUsed: foundTx.gasUsed,
+            isNewRecipient: true
+          });
+
+          setTxResult({
+            ...foundTx,
+            hash: hash,
+            isReal: false,
+            risk: {
+              score: evaluatedRisk.score,
+              level: evaluatedRisk.riskLevel,
+              explanation: `Pattern evaluated for transaction: ${realErr.message || 'Custom evaluation'}`
+            }
+          });
         }
-      });
-
+      }
+    } catch (err) {
+      setErrorMsg(err.message || 'Unable to inspect transaction hash.');
+    } finally {
       setIsSearching(false);
-    }, 500);
+    }
   };
 
   const handleQuickTxSelect = (hash) => {
@@ -77,14 +111,14 @@ export default function AnalyzeTx() {
           Analyze Single Blockchain Transaction
         </h2>
         <p className="text-xs text-slate-400 leading-relaxed mb-6">
-          Inspect individual transaction hashes to analyze transfer values, gas consumption parameters, sender/receiver counterparty relationships, and potential anomaly flags.
+          Inspect individual transaction hashes (Demo or Live Mainnet 0x...) to analyze transfer amounts, gas consumption, sender/receiver counterparty relationships, and single-tx risk assessment.
         </p>
 
         {/* Demo Transaction Selector */}
         <div className="mb-6 p-4 rounded-2xl bg-slate-950/70 border border-slate-800/80">
           <span className="text-xs font-semibold text-slate-300 flex items-center gap-1.5 mb-3">
             <Zap className="w-3.5 h-3.5 text-cyan-400" />
-            Quick Select Demo Transaction Hashes:
+            Quick Select Sample Demo Transaction Hashes:
           </span>
 
           <div className="space-y-2">
@@ -119,15 +153,24 @@ export default function AnalyzeTx() {
             <button
               type="submit"
               disabled={isSearching}
-              className="w-full sm:w-auto px-6 py-3.5 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-slate-950 font-bold text-sm tracking-wide shadow-lg shadow-cyan-500/20 transition transform active:scale-95 shrink-0 flex items-center justify-center gap-2"
+              className="w-full sm:w-auto px-6 py-3.5 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-slate-950 font-bold text-sm tracking-wide shadow-lg shadow-cyan-500/20 transition transform active:scale-95 shrink-0 flex items-center justify-center gap-2 disabled:opacity-60"
             >
-              <Search className="w-4 h-4" />
-              <span>{isSearching ? 'Inspecting...' : 'Analyze Transaction'}</span>
+              {isSearching ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin text-slate-950" />
+                  <span>Inspecting...</span>
+                </>
+              ) : (
+                <>
+                  <Search className="w-4 h-4 text-slate-950" />
+                  <span>Analyze Transaction</span>
+                </>
+              )}
             </button>
           </div>
 
           {errorMsg && (
-            <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs flex items-center gap-2">
+            <div className="p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs flex items-center gap-2">
               <AlertCircle className="w-4 h-4 shrink-0" />
               <span>{errorMsg}</span>
             </div>
@@ -141,7 +184,16 @@ export default function AnalyzeTx() {
           {/* Risk Level Highlight Card */}
           <div className="cyber-card p-6 rounded-3xl border border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-6">
             <div>
-              <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider block">Single Transaction Risk Profile</span>
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                  Single Transaction Risk Profile
+                </span>
+                {txResult.isReal && (
+                  <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-blue-500/20 text-cyan-300 border border-blue-500/30">
+                    Live Mainnet Tx
+                  </span>
+                )}
+              </div>
               <h3 className="text-xl font-bold text-slate-100 mt-1 flex items-center gap-3">
                 <span>Evaluated Risk Level:</span>
                 <RiskBadge riskLevel={txResult.risk.level} score={txResult.risk.score} />
@@ -168,7 +220,19 @@ export default function AnalyzeTx() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 font-mono text-xs">
               <div className="p-4 rounded-xl bg-slate-950/80 border border-slate-800/80 space-y-1">
                 <span className="text-slate-500 text-[11px] font-sans font-medium block">Transaction Hash</span>
-                <span className="text-cyan-400 font-semibold break-all">{txResult.hash}</span>
+                <span className="text-cyan-400 font-semibold break-all flex items-center gap-1">
+                  {formatAddress(txResult.hash)}
+                  {txResult.isReal && (
+                    <a
+                      href={`https://etherscan.io/tx/${txResult.hash}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="hover:text-cyan-300"
+                    >
+                      <ExternalLink className="w-3.5 h-3.5 inline" />
+                    </a>
+                  )}
+                </span>
               </div>
 
               <div className="p-4 rounded-xl bg-slate-950/80 border border-slate-800/80 space-y-1">
@@ -178,12 +242,12 @@ export default function AnalyzeTx() {
 
               <div className="p-4 rounded-xl bg-slate-950/80 border border-slate-800/80 space-y-1">
                 <span className="text-slate-500 text-[11px] font-sans font-medium block">Sender (From)</span>
-                <span className="text-slate-200 font-semibold">{txResult.sender}</span>
+                <span className="text-slate-200 font-semibold break-all">{txResult.sender}</span>
               </div>
 
               <div className="p-4 rounded-xl bg-slate-950/80 border border-slate-800/80 space-y-1">
                 <span className="text-slate-500 text-[11px] font-sans font-medium block">Receiver (To)</span>
-                <span className="text-slate-200 font-semibold">{txResult.receiver}</span>
+                <span className="text-slate-200 font-semibold break-all">{txResult.receiver}</span>
               </div>
 
               <div className="p-4 rounded-xl bg-slate-950/80 border border-slate-800/80 space-y-1">

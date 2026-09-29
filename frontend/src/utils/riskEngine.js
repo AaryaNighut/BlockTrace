@@ -3,6 +3,7 @@
  * -------------------------------------------------------------
  * Educational risk scoring algorithm designed for college viva presentation.
  * Calculates a total risk score from 0 to 100 based on 5 discrete indicators (+20 each).
+ * Works seamlessly for both Demo datasets and Live Etherscan Mainnet data.
  */
 
 export function calculateRiskScore(walletData) {
@@ -16,32 +17,33 @@ export function calculateRiskScore(walletData) {
     unusualPattern: false,
   };
 
-  // Rule 1: High Transaction Frequency (e.g. total tx > 25)
+  // Rule 1: High Transaction Frequency (e.g. total tx >= 25)
   if (walletData.totalTx && walletData.totalTx >= 25) {
     score += 20;
     indicators.highFrequency = true;
-    reasons.push("High transaction frequency observed over recent timeframe");
+    reasons.push("High transaction frequency observed over recent timeframe (>= 25 transactions)");
   }
 
-  // Rule 2: Multiple Interacting Unique Addresses (e.g. unique addresses > 10)
+  // Rule 2: Multiple Interacting Unique Addresses (e.g. unique addresses >= 10)
   if (walletData.uniqueAddresses && walletData.uniqueAddresses >= 10) {
     score += 20;
     indicators.multipleAddresses = true;
-    reasons.push("Interacting with a high count of distinct counterparty addresses");
+    reasons.push("Interacting with a high count of distinct counterparty addresses (>= 10 unique addresses)");
   }
 
   // Rule 3: Large Value Transfers (e.g. single transfer >= 10.0 ETH)
-  if (walletData.largeTxCount && walletData.largeTxCount >= 1) {
+  const largestEthVal = parseFloat(String(walletData.largestTx || '').replace(' ETH', '') || '0');
+  if (walletData.largeTxCount >= 1 || largestEthVal >= 10.0) {
     score += 20;
     indicators.largeTransfers = true;
-    reasons.push("High-value volume transfer detected (> 10 ETH equivalent)");
+    reasons.push("High-value ETH volume transfer detected (>= 10 ETH equivalent)");
   }
 
   // Rule 4: Rapid Sequence Transfers (Short time interval between txs)
   if (walletData.isRapidSequence) {
     score += 20;
     indicators.rapidSequence = true;
-    reasons.push("Rapid back-to-back transaction sequences (sub-minute intervals)");
+    reasons.push("Rapid back-to-back transaction sequences detected (sub-minute intervals)");
   }
 
   // Rule 5: Unusual Activity Pattern (Mix of zero-value or fan-out structures)
@@ -85,8 +87,8 @@ export function calculateTxRiskScore(txData) {
   let score = 10;
   const reasons = [];
 
-  const amountEth = parseFloat(txData.amount || "0");
-  const gasUsed = parseInt(txData.gasUsed || "21000", 10);
+  const amountEth = parseFloat(String(txData.amount || '0').replace(' ETH', ''));
+  const gasUsed = parseInt(String(txData.gasUsed || '21000'), 10);
 
   if (amountEth > 25.0) {
     score += 40;
@@ -103,7 +105,7 @@ export function calculateTxRiskScore(txData) {
 
   if (txData.isNewRecipient) {
     score += 20;
-    reasons.push("First interaction with unverified counterparty recipient");
+    reasons.push("Interaction with unverified counterparty recipient");
   }
 
   if (score > 100) score = 100;
