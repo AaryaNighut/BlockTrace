@@ -22,18 +22,37 @@ import { formatAddress } from '../utils/web3';
 
 function generateCustomTxAnalysis(hash) {
   const charCodeSum = hash.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-  const amountEth = (0.5 + (charCodeSum % 38)).toFixed(2);
-  const gasUsed = (21000 + (charCodeSum * 175) % 140000).toString();
-  const blockNum = 19480000 + (charCodeSum % 10000);
-  
   const senderHex = '0x' + hash.substring(2, 42);
   const receiverHex = '0x' + hash.substring(26, 66);
+  const blockNum = 19480000 + (charCodeSum % 10000);
 
-  const evaluatedRisk = calculateTxRiskScore({
-    amount: amountEth,
-    gasUsed: gasUsed,
-    isNewRecipient: charCodeSum % 2 === 0
-  });
+  // Pick a dynamic risk tier based on hash sum modulo 3
+  const riskTierIndex = charCodeSum % 3; // 0 = High, 1 = Medium, 2 = Low
+
+  let amountEth, gasUsed, score, level, explanation;
+
+  if (riskTierIndex === 0) {
+    // High Risk Tx Profile
+    amountEth = (28.5 + (charCodeSum % 25)).toFixed(2);
+    gasUsed = (145000 + (charCodeSum % 50000)).toString();
+    score = 80 + (charCodeSum % 15);
+    level = 'HIGH RISK';
+    explanation = 'Transaction involves an extraordinarily large ETH transfer amount (> 25 ETH) sent to an unverified counterparty recipient with high gas execution limits.';
+  } else if (riskTierIndex === 1) {
+    // Medium Risk Tx Profile
+    amountEth = (6.2 + (charCodeSum % 8)).toFixed(2);
+    gasUsed = (65000 + (charCodeSum % 35000)).toString();
+    score = 45 + (charCodeSum % 15);
+    level = 'MEDIUM RISK';
+    explanation = 'Substantial ETH value transferred to a secondary counterparty with moderate gas limits.';
+  } else {
+    // Low Risk Tx Profile
+    amountEth = (0.2 + (charCodeSum % 3)).toFixed(2);
+    gasUsed = '21000';
+    score = 15 + (charCodeSum % 10);
+    level = 'LOW RISK';
+    explanation = 'Standard peer-to-peer ETH transfer with low gas consumption and normal counterparty history.';
+  }
 
   return {
     hash: hash,
@@ -48,11 +67,9 @@ function generateCustomTxAnalysis(hash) {
     nonce: charCodeSum % 50,
     isReal: false,
     risk: {
-      score: evaluatedRisk.score,
-      level: evaluatedRisk.riskLevel,
-      explanation: evaluatedRisk.reasons.length > 0 
-        ? evaluatedRisk.reasons.join('; ')
-        : 'Standard peer-to-peer ETH transaction evaluation.'
+      score: score,
+      level: level,
+      explanation: explanation
     }
   };
 }
