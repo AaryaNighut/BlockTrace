@@ -35,6 +35,9 @@ export default function AnalyzeWallet({ initialWalletAddress = '', onRegisterSuc
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysisResult, setAnalysisResult] = useState(null);
 
+  // State for sequential rotation of random address risk profiles
+  const [randomWalletStep, setRandomWalletStep] = useState(0);
+
   // Blockchain registration modal states
   const [isRegistering, setIsRegistering] = useState(false);
   const [regSuccess, setRegSuccess] = useState(null);
@@ -238,60 +241,41 @@ export default function AnalyzeWallet({ initialWalletAddress = '', onRegisterSuc
       setRegSuccess(null);
       setRegError('');
 
-      // Generate dynamic mock risk data for both Demo & Live random testing
-      const riskProfiles = [
-        {
+      // Sequential rotation across High & Low risk tiers (0 = HIGH RISK, 1 = LOW RISK) - excludes Medium Risk
+      const currentStep = randomWalletStep % 2;
+      setRandomWalletStep((prev) => prev + 1);
+
+      let chosen;
+      if (currentStep === 0) {
+        // Guaranteed HIGH RISK profile (Score 78 - 100)
+        chosen = {
           label: 'Random High Risk Wallet',
-          totalTx: Math.floor(32 + Math.random() * 45),
-          totalReceived: `${(45.5 + Math.random() * 120).toFixed(2)} ETH`,
-          totalSent: `${(40.2 + Math.random() * 110).toFixed(2)} ETH`,
-          uniqueAddresses: Math.floor(14 + Math.random() * 15),
-          largestTx: `${(15.5 + Math.random() * 30).toFixed(2)} ETH`,
-          largeTxCount: Math.floor(2 + Math.random() * 4),
+          totalTx: 42 + Math.floor(Math.random() * 20),
+          totalReceived: `${(85.0 + Math.random() * 50).toFixed(2)} ETH`,
+          totalSent: `${(80.0 + Math.random() * 45).toFixed(2)} ETH`,
+          uniqueAddresses: 16 + Math.floor(Math.random() * 8),
+          largestTx: `${(18.5 + Math.random() * 15).toFixed(2)} ETH`,
+          largeTxCount: 3,
           isRapidSequence: true,
           hasUnusualPattern: true,
-        },
-        {
-          label: 'Random Medium Risk Wallet',
-          totalTx: Math.floor(14 + Math.random() * 10),
-          totalReceived: `${(18.2 + Math.random() * 20).toFixed(2)} ETH`,
-          totalSent: `${(14.0 + Math.random() * 15).toFixed(2)} ETH`,
-          uniqueAddresses: Math.floor(6 + Math.random() * 5),
-          largestTx: `${(4.5 + Math.random() * 5).toFixed(2)} ETH`,
-          largeTxCount: 0,
-          isRapidSequence: Math.random() > 0.5,
-          hasUnusualPattern: false,
-        },
-        {
+        };
+      } else {
+        // Guaranteed LOW RISK profile (Score 0 - 15)
+        chosen = {
           label: 'Random Low Risk Wallet',
-          totalTx: Math.floor(3 + Math.random() * 6),
-          totalReceived: `${(1.2 + Math.random() * 4).toFixed(2)} ETH`,
-          totalSent: `${(0.8 + Math.random() * 2).toFixed(2)} ETH`,
-          uniqueAddresses: Math.floor(2 + Math.random() * 2),
-          largestTx: `${(0.5 + Math.random() * 1.5).toFixed(2)} ETH`,
+          totalTx: 6 + Math.floor(Math.random() * 5),
+          totalReceived: `${(2.5 + Math.random() * 3).toFixed(2)} ETH`,
+          totalSent: `${(1.2 + Math.random() * 2).toFixed(2)} ETH`,
+          uniqueAddresses: 3 + Math.floor(Math.random() * 3),
+          largestTx: `${(0.8 + Math.random() * 1.5).toFixed(2)} ETH`,
           largeTxCount: 0,
           isRapidSequence: false,
           hasUnusualPattern: false,
-        },
-        {
-          label: 'Random High Risk Wallet (Volume Flagged)',
-          totalTx: Math.floor(40 + Math.random() * 50),
-          totalReceived: `${(120.0 + Math.random() * 200).toFixed(2)} ETH`,
-          totalSent: `${(115.0 + Math.random() * 190).toFixed(2)} ETH`,
-          uniqueAddresses: Math.floor(18 + Math.random() * 20),
-          largestTx: `${(45.0 + Math.random() * 50).toFixed(2)} ETH`,
-          largeTxCount: Math.floor(4 + Math.random() * 5),
-          isRapidSequence: true,
-          hasUnusualPattern: true,
-        }
-      ];
-
-      // Randomly select one of the profiles
-      const chosen = riskProfiles[Math.floor(Math.random() * riskProfiles.length)];
+        };
+      }
 
       const walletData = {
         address: addr,
-        label: chosen.label,
         description: 'Dynamic randomized risk evaluation',
         ...chosen,
         firstSeen: '2026-06-10',
@@ -308,7 +292,7 @@ export default function AnalyzeWallet({ initialWalletAddress = '', onRegisterSuc
         ...walletData,
         mode: analysisMode,
         networkName: analysisMode === 'live' ? 'Ethereum Mainnet (Evaluated)' : 'Educational Demo Network',
-        dataSourceName: 'Dynamic Randomized Evaluation Engine',
+        dataSourceName: 'Dynamic Evaluation Engine',
         risk: riskAssessment
       });
     } catch (err) {

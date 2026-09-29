@@ -79,6 +79,7 @@ export default function AnalyzeTx() {
   const [errorMsg, setErrorMsg] = useState('');
   const [isSearching, setIsSearching] = useState(false);
   const [txResult, setTxResult] = useState(null);
+  const [randomTxStep, setRandomTxStep] = useState(0);
 
   const handleAnalyzeTx = async (hashToUse) => {
     let hash = (hashToUse || txHashInput).trim();
@@ -149,7 +150,59 @@ export default function AnalyzeTx() {
   const handleGenerateRandomTx = () => {
     const randomTxHash = '0x' + Array.from({ length: 64 }, () => Math.floor(Math.random() * 16).toString(16)).join('');
     setTxHashInput(randomTxHash);
-    handleAnalyzeTx(randomTxHash);
+    setErrorMsg('');
+
+    // Rotation across 3 risk tiers: 0 = HIGH RISK, 1 = MEDIUM RISK, 2 = LOW RISK
+    const step = randomTxStep % 3;
+    setRandomTxStep((prev) => prev + 1);
+
+    const senderHex = '0x' + Array.from({ length: 40 }, () => Math.floor(Math.random() * 16).toString(16)).join('');
+    const receiverHex = '0x' + Array.from({ length: 40 }, () => Math.floor(Math.random() * 16).toString(16)).join('');
+    const blockNum = 19480000 + Math.floor(Math.random() * 10000);
+
+    let amountEth, gasUsed, score, level, explanation;
+
+    if (step === 0) {
+      // HIGH RISK Profile
+      amountEth = (38.5 + Math.random() * 40).toFixed(2);
+      gasUsed = (175000 + Math.floor(Math.random() * 70000)).toString();
+      score = 85 + Math.floor(Math.random() * 10);
+      level = 'HIGH RISK';
+      explanation = 'CRITICAL RISK: Transaction involves an extraordinarily large ETH transfer amount (> 35 ETH) sent to an unverified counterparty recipient with high gas execution limits.';
+    } else if (step === 1) {
+      // MEDIUM RISK Profile
+      amountEth = (12.4 + Math.random() * 12).toFixed(2);
+      gasUsed = (75000 + Math.floor(Math.random() * 30000)).toString();
+      score = 48 + Math.floor(Math.random() * 10);
+      level = 'MEDIUM RISK';
+      explanation = 'MODERATE RISK: Substantial ETH value transferred to a secondary counterparty address with moderate gas consumption.';
+    } else {
+      // LOW RISK Profile
+      amountEth = (0.5 + Math.random() * 2).toFixed(2);
+      gasUsed = '21000';
+      score = 12 + Math.floor(Math.random() * 10);
+      level = 'LOW RISK';
+      explanation = 'LOW RISK: Standard peer-to-peer ETH transfer with baseline gas consumption and normal counterparty history.';
+    }
+
+    setTxResult({
+      hash: randomTxHash,
+      sender: senderHex,
+      receiver: receiverHex,
+      amount: `${amountEth} ETH`,
+      gasUsed: gasUsed,
+      gasPrice: `${18 + Math.floor(Math.random() * 15)} Gwei`,
+      blockNumber: blockNum,
+      timestamp: 'Just now (Evaluated)',
+      status: 'Success (Confirmed)',
+      nonce: Math.floor(Math.random() * 100),
+      isReal: false,
+      risk: {
+        score: score,
+        level: level,
+        explanation: explanation
+      }
+    });
   };
 
   return (
